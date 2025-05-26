@@ -1,0 +1,8 @@
+#!/projckt/app2/backend/venv/bin/python
+
+
+from wireguard.cli import cli
+
+
+if __name__ == "__main__":
+    cli()

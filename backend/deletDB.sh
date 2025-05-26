@@ -1,0 +1,1 @@
+sudo -u postgres psql -d game_room -c "DELETE FROM room_player; DELETE FROM room;"

@@ -1,0 +1,10 @@
+2025-05-26 11:41:53,949 - socket_events - INFO - Join event - SID: S6HEtJoHaFBObXS3AAAB, Data: {'room_id': '32', 'username': 'ghaith12'}
+2025-05-26 11:41:53,949 - socket_events - DEBUG - Join request received - Data: {'sid': 'S6HEtJoHaFBObXS3AAAB', 'data': {'room_id': '32', 'username': 'ghaith12'}}
+2025-05-26 11:41:53,950 - socket_events - DEBUG - Checking player existence - Data: {'sid': 'S6HEtJoHaFBObXS3AAAB', 'room_id': 32, 'username': 'ghaith12'}
+2025-05-26 11:41:53,954 - socket_events - DEBUG - Player found, proceeding with join - Data: {'sid': 'S6HEtJoHaFBObXS3AAAB', 'room_id': 32, 'username': 'ghaith12'}
+2025-05-26 11:41:53,958 - socket_events - DEBUG - Join successful - Data: {'sid': 'S6HEtJoHaFBObXS3AAAB', 'room_id': 32, 'username': 'ghaith12', 'is_host': True}
+2025-05-26 11:41:54,987 - socket_events - DEBUG - Heartbeat - SID: S6HEtJoHaFBObXS3AAAB, Data: {'room_id': '32', 'username': 'ghaith12'}
+2025-05-26 11:42:12,391 - socket_events - INFO - Leave event - SID: S6HEtJoHaFBObXS3AAAB, Data: {'room_id': '32', 'username': 'ghaith12'}
+2025-05-26 11:42:12,843 - socket_events - INFO - Leave event - SID: S6HEtJoHaFBObXS3AAAB, Data: {'room_id': '32', 'username': 'ghaith12'}
+2025-05-26 11:42:46,695 - socket_events - INFO - Disconnection - SID: S6HEtJoHaFBObXS3AAAB
+2025-05-26 11:42:46,695 - socket_events - DEBUG - Client rooms state: {}

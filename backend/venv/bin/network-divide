@@ -1,0 +1,39 @@
+#!/projckt/app2/backend/venv/bin/python
+"""Show subnets information.
+
+Given an IP network in CIDR notation and the minimum number of desired subnets,
+this script will provide the relevant information about the desired subnets.
+
+Example:
+    $ network-divide 10.10.0.34/16 4
+    $ network-divide fd3e:48fe:59b2:43ca::/64 15
+
+"""
+
+import argparse
+
+from subnet import ip_network
+
+parser = argparse.ArgumentParser(
+    description='Divide a network into the desired amount of subnets, maintaining an even'
+                ' distribution of size across all subnets. This means that there could be'
+                ' _more_ than the desired amount of subnets, but never less.')
+parser.add_argument('network', type=str, help='the network to divide')
+parser.add_argument('parts', type=int, help='the amount of subnets desired')
+
+args = parser.parse_args()
+
+net = ip_network(args.network, strict=False)
+
+for subnet in net.divide(args.parts):
+    print("")
+    print(f"CIDR:       {subnet}")
+    print(f"Netmask:    {subnet.netmask}")
+    print(f"Network:    {subnet.network_address}")
+
+    if subnet.version == 4 and subnet.num_addresses > 2:
+        print(f"Broadcast:  {subnet.broadcast_address}")
+        print(f"Gateway:    {subnet.network_address + 1}")
+        print(f"Host Count: {subnet.num_addresses - 2}")  # exclude network and broadcast address
+    else:
+        print(f"Host Count: {subnet.num_addresses}")  # IPv4 RFC 3021 exception and IPv6 in general

@@ -1,0 +1,27 @@
+fastapi==0.95.2
+uvicorn==0.24.0
+sqlalchemy==2.0.23
+sqlalchemy[asyncio]
+asyncpg==0.29.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+pydantic==1.10.13
+alembic==1.12.1
+python-socketio==5.10.0
+python-dotenv==1.0.0
+dnspython==1.15.0
+requests==2.31.0
+websockets==11.0.3
+aiosmtplib==2.0.2
+fastapi-jwt-auth==0.5.0
+pytest==7.4.3
+pytest-asyncio==0.21.1
+httpx==0.25.2
+pytest-cov==4.1.0
+
+# مكتبات الصوت للدردشة الصوتية
+pyaudio==0.2.11
+numpy==1.21.0
+wave==0.0.2
+email-validator
