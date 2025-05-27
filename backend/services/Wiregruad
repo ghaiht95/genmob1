@@ -3,7 +3,7 @@ import subprocess
 import asyncio
 from config import settings
 
-class SoftEtherVPN:
+class WiregruadVPN:
     def __init__(self, server_ip=None, server_port=None, admin_password=None):
         self.server_ip = server_ip or settings.SOFTETHER_SERVER_IP
         self.server_port = server_port or settings.SOFTETHER_SERVER_PORT
