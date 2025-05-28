@@ -20,14 +20,14 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = Column(Boolean, default=True)
-    vpn_ip = Column(String(15), nullable=True)
-    vpn_mac = Column(String(17), nullable=True)
+    private_key = Column(String(15), nullable=True)
+    public_key = Column(String(17), nullable=True)
 
     # علاقات ORM
     messages = relationship("ChatMessage", back_populates="sender", cascade="all, delete-orphan")
     owned_rooms = relationship('Room', back_populates='owner', foreign_keys='Room.owner_username')
     rooms = relationship('RoomPlayer', back_populates='player')
-
+    network_config_user = relationship('network_config_user', back_populates='user')
     def set_password(self, password: str):
         self.password_hash = pwd_context.hash(password)
 
@@ -76,11 +76,7 @@ class Room(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    vpn_hub = Column(String(100), nullable=True)
-    vpn_username = Column(String(100), nullable=True)
-    vpn_password = Column(String(100), nullable=True)
-    server_ip = Column(String(100), nullable=True)
-    port = Column(Integer, nullable=True)
+    network_name = Column(String(100), ForeignKey('network_config.network_name', ondelete='CASCADE'), nullable=True, index=True)
 
     # علاقات ORM
     players = relationship("RoomPlayer", back_populates="room", cascade="all, delete-orphan")
@@ -127,3 +123,28 @@ class ChatMessage(Base):
     @staticmethod
     def validate_message(message: str) -> bool:
         return bool(message and 0 < len(message.strip()) <= 1000)
+    
+    class network_config(Base):
+        __tablename__ = 'network_config'
+        id = Column(Integer, primary_key=True)
+        private_key = Column(String(15), nullable=True)
+        public_key = Column(String(17), nullable=True)
+        server_ip = Column(String(100), nullable=True)
+        port = Column(Integer, nullable=True)
+        is_active = Column(Boolean, default=False)
+        NETWORK_NAME = Column(String(100), nullable=True, unique=True)
+
+        # علاقات ORM
+        room = relationship('Room', back_populates='network_configs')
+        user = relationship('User', back_populates='network_configs')
+        
+    class network_config_user(Base):
+        __tablename__ = 'network_config_user'
+        id = Column(Integer, primary_key=True)
+        network_config_id = Column(Integer, ForeignKey('network_config.id', ondelete='CASCADE'), nullable=False, index=True)
+        user_id = Column(Integer, ForeignKey('user.id', ondelete='CASCADE'), nullable=False, index=True)
+        allowed_ips = Column(String(100), nullable=True)
+        
+       # علاقات ORM
+        network_config = relationship('network_config', back_populates='network_config_user')
+        user = relationship('User', back_populates='network_config_user')
