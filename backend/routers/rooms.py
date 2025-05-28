@@ -4,7 +4,7 @@ from sqlalchemy.future import select
 from database.database import get_session
 from models import Room, RoomPlayer, ChatMessage, User
 from config import settings
-from services.softether import SoftEtherVPN
+from services.Wiregruad import WiregruadVPN 
 import random
 import logging
 from routers.friends import get_current_user
@@ -14,11 +14,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 # إعداد VPN
-vpn = SoftEtherVPN(
-    admin_password=settings.SOFTETHER_ADMIN_PASSWORD,
-    server_ip=settings.SOFTETHER_SERVER_IP,
-    server_port=settings.SOFTETHER_SERVER_PORT
-)
+vpn = WiregruadVPN()
 
 @router.get("/")
 async def root_get_rooms(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_session)):
@@ -87,11 +83,7 @@ async def create_room(request: Request, current_user: User = Depends(get_current
             return {
                 "id": room.id,
                 "room_id": room.id,
-                "vpn_hub": room.vpn_hub,
-                "vpn_username": existing_player.username,
-                "vpn_password": "REUSEDPASSWORD",  # We don't store the original password
-                "server_ip": settings.SOFTETHER_SERVER_IP,
-                "port": settings.SOFTETHER_SERVER_PORT,
+                "network_name": room.network_name,	
                 "message": "You are already in a room. Using existing connection."
             }
     
@@ -110,22 +102,16 @@ async def create_room(request: Request, current_user: User = Depends(get_current
     )
     db.add(room)
     await db.flush()
-    hub_name = f"room_{room.id}"
-    room.vpn_hub = hub_name
+    network_name = f"room_{room.id}"
+    room.network_name = network_name
 
-    logger.info(f"Creating VPN hub: {hub_name}")
+    logger.info(f"Creating VPN hub: {network_name}")
     try:
-        if not await vpn.create_hub(hub_name):
-            logger.error(f"Failed to create VPN hub: {hub_name}")
+        if not await vpn.create_network_config(db):
+            logger.error(f"Failed to create VPN hub: {network_name}")
             await db.rollback()
             raise HTTPException(status_code=500, detail="Failed to create VPN hub")
-        username = current_user.email.split('@')[0]
-        vpn_password = ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=12))
-        if not await vpn.create_user(hub_name, username, vpn_password):
-            logger.error(f"Failed to create VPN user: {username} in hub: {hub_name}")
-            await vpn.delete_hub(hub_name)
-            await db.rollback()
-            raise HTTPException(status_code=500, detail="Failed to create VPN user")
+        
         rp = RoomPlayer(room_id=room.id, player_username=current_user.email, username=username, is_host=True)
         db.add(rp)
         await db.commit()
@@ -133,16 +119,14 @@ async def create_room(request: Request, current_user: User = Depends(get_current
         return {
             "id": room.id,
             "room_id": room.id,
-            "vpn_hub": hub_name,
-            "vpn_username": username,
-            "vpn_password": vpn_password,
-            "server_ip": settings.SOFTETHER_SERVER_IP,
-            "port": settings.SOFTETHER_SERVER_PORT
+            "network_name": network_name,
         }
     except Exception as e:
         logger.error(f"Exception during room creation: {str(e)}")
         try:
-            await vpn.delete_hub(hub_name)
+            await db.delete(rp)
+            await db.delete(room)
+            await vpn.delete_network_config(db, network_name)
         except:
             pass
         await db.rollback()
@@ -172,14 +156,9 @@ async def join_room(request: Request, current_user: User = Depends(get_current_u
     existing_player = existing_player.scalars().first()
 
     if existing_player:
-        hub_name = f"room_{room.id}"
         return {
             "room_id": room.id,
-            "vpn_hub": hub_name,
-            "vpn_username": existing_player.username,
-            "vpn_password": "REUSEDPASSWORD",
-            "server_ip": settings.SOFTETHER_SERVER_IP,
-            "port": settings.SOFTETHER_SERVER_PORT,
+            "network_name": room.network_name,
             "message": "You are already in this room. Using existing connection."
         }
 
@@ -192,19 +171,15 @@ async def join_room(request: Request, current_user: User = Depends(get_current_u
         raise HTTPException(status_code=400, detail="Room is full")
 
     # ✅ إنشاء مستخدم جديد في VPN
-    hub_name = f"room_{room.id}"
-    vpn_username = current_user.email.split('@')[0]
-    vpn_password = ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=12))
-
-    if not await vpn.create_user(hub_name, vpn_username, vpn_password):
-        logger.error(f"Failed to create VPN user: {vpn_username} in hub: {hub_name}")
+    if not await vpn.push_user_to_network_config(db, room.network_name, username=current_user.email):
+        logger.error(f"Failed to create VPN user: {current_user.email} in hub: {room.network_name}")
         raise HTTPException(status_code=500, detail="Failed to create VPN user")
 
     # ✅ إضافة اللاعب للغرفة
     rp = RoomPlayer(
         room_id=room.id,
         player_username=current_user.email,
-        username=vpn_username,
+        username=current_user.email,
         is_host=(room.current_players == 0)
     )
     db.add(rp)
@@ -217,11 +192,10 @@ async def join_room(request: Request, current_user: User = Depends(get_current_u
     await sio.emit('update_rooms', {}, namespace=NAMESPACE)
     return {
         "room_id": room.id,
-        "vpn_hub": hub_name,
-        "vpn_username": vpn_username,
-        "vpn_password": vpn_password,
-        "server_ip": settings.SOFTETHER_SERVER_IP,
-        "port": settings.SOFTETHER_SERVER_PORT,
+        "private_key": current_user.private_key,
+        "public_key": current_user.public_key,  
+        "server_ip": room.network_name.server_ip,
+        "port": room.network_name.port,
         "message": "Joined room successfully"
     }
 
@@ -242,10 +216,10 @@ async def leave_room(request: Request, current_user: User = Depends(get_current_
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
 
-    hub_name = f"room_{room.id}"
+
     if rp:
         try:
-            await vpn.delete_user(hub_name, rp.username)
+            await vpn.check_user_in_network_config(db, room.network_name, username=current_user.email)
         except Exception as e:
             logger.warning(f"Error deleting VPN user: {e}")
         await db.delete(rp)
@@ -258,7 +232,7 @@ async def leave_room(request: Request, current_user: User = Depends(get_current_
     if room.current_players == 0:
         # حذف الهب وحذف الغرفة والمحادثات
         try:
-            await vpn.delete_hub(hub_name)
+            await vpn.down_network_config(db, room.network_name)
         except Exception as e:
             logger.warning(f"Error deleting VPN hub: {e}")
         await db.execute(ChatMessage.__table__.delete().where(ChatMessage.room_id == room.id))

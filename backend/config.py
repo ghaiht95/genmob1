@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     SOFTETHER_SERVER_IP: str = "31.220.80.192"  # تحديث عنوان IP السيرفر
     SOFTETHER_SERVER_PORT: int = 5555  # تحديث المنفذ
     VPNCMD_PATH: str = "/root/vpnserver/vpncmd"
+    CONFIG_DIR: str = "/projckt/APP_CLEN/backend/ROOM_CONFIG"
     
     # VPN Network Settings
     VPN_NETWORK: str = "10.0.0.0"  # شبكة VPN الأساسية

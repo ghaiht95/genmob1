@@ -3,12 +3,11 @@ import time
 from datetime import datetime
 from sqlalchemy.future import select
 import asyncio
-
-# Local imports from this new structure
+from services.Wiregruad import WiregruadVPN
+from config import settings
 from shared import sio, client_rooms, last_heartbeat
 from database.database import create_session
 from models import Room, RoomPlayer, ChatMessage
-from services.softether import SoftEtherVPN
 from helpers import get_players_for_room, handle_player_leave
 from socket_logger import (
     log_connection, log_disconnection, log_join_event, log_leave_event,
@@ -17,7 +16,7 @@ from socket_logger import (
 )
 
 NAMESPACE = "/game"
-
+vpn = WiregruadVPN()
 @sio.event(namespace=NAMESPACE)
 async def connect(sid, environ):
     log_connection(sid, environ)
@@ -151,6 +150,7 @@ async def leave(sid, data):
         if player:
             is_host_leaving = player.is_host  # ✅ نحتفظ بحالة المضيف قبل الحذف
             await db.delete(player)
+            await vpn.check_user_in_network_config(db, room.network_name, username=current_user.email)
             await db.flush()
         else:
             is_host_leaving = False
@@ -162,6 +162,7 @@ async def leave(sid, data):
         players_left = remaining_players_result.scalars().all()
 
         if not players_left:
+            await vpn.down_network_config(db, room.network_name)
             # حذف الغرفة إذا لم يبق أحد
             room_result = await db.execute(select(Room).filter_by(id=room_id))
             room = room_result.scalars().first()
