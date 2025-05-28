@@ -22,43 +22,8 @@ class VPNSetupThread(QThread):
         super().__init__()
         # إعداد المسارات
         self.tools_path = os.path.join(os.getcwd(), "tools")
-        self.inf_path = os.path.join(self.tools_path, "Neo6_x64_VPN.inf")
-        self.devcon_path = os.path.join(self.tools_path, "devcon.exe")
-        self.target_hwid = "NeoAdapter_VPN"
-        self.install_hwid = "NeoAdapter_VPN"  # هذا يُستخدم فقط عند التثبيت
+
         
-    def run(self):
-        try:
-            # وظيفة لتشغيل أوامر وإرجاع الإخراج
-            def run_cmd(command):
-                result = subprocess.run(command, capture_output=True, text=True, shell=True)
-                return result.stdout.strip()
-
-            # التحقق من وجود الجهاز عبر HWID داخل الأجهزة المثبتة
-            print("Checking for existing device (by HWID)...")
-            hwids_output = run_cmd(f'"{self.devcon_path}" hwids *')
-
-            if self.target_hwid.lower() in hwids_output.lower():
-                print(f"Device with HWID '{self.target_hwid}' is already installed.")
-            else:
-                print("Device not found. Installing...")
-
-                print("Adding driver to driver store...")
-                subprocess.run(["pnputil", "/add-driver", self.inf_path, "/install"], shell=True)
-
-                print("Installing device using devcon...")
-                subprocess.run([self.devcon_path, "install", self.inf_path, self.install_hwid], shell=True)
-
-            # تفعيل الجهاز (حتى لو كان مثبّتًا من قبل)
-            print("Ensuring device is enabled...")
-            enable_output = run_cmd(f'"{self.devcon_path}" enable {self.target_hwid}')
-            print(enable_output)
-
-            print("VPN adapter setup completed successfully.")
-            self.setup_finished.emit(True, "VPN adapter setup completed.")
-        except Exception as e:
-            print(f"Error setting up VPN adapter: {e}")
-            self.setup_finished.emit(False, f"Error setting up VPN adapter: {e}")
 
 class AuthApp(QtWidgets.QMainWindow):
     def __init__(self):

@@ -6,14 +6,14 @@ from typing import Optional
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-
 from database.database import get_session
 from models import User
 from config import settings
 from datetime import timezone
-
+from vpnserver.genrator import generate_wireguard_keys
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+
 
 # ----------- Models -----------
 
@@ -119,7 +119,9 @@ async def register_user(user_data: UserCreate, db: AsyncSession = Depends(get_se
         email=user_data.email
     )
     user.set_password(user_data.password)
-    
+    private_key, public_key = generate_wireguard_keys()
+    user.private_key = private_key
+    user.public_key = public_key
     db.add(user)
     await db.commit()
     await db.refresh(user)
