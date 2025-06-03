@@ -42,7 +42,7 @@ class RoomWindow(QtWidgets.QMainWindow):
         self.user_username = user_username
         self.access_token = access_token
         self.players = []
-        self.vpn_manager = VPNManager(room_data)
+        self.vpn_manager = None  # Will be created later when VPN info is available
         self.is_host = room_data.get('owner_username') == user_username
 
         file_path = os.path.join(os.getcwd(), 'ui', 'room_window.ui')
@@ -57,8 +57,6 @@ class RoomWindow(QtWidgets.QMainWindow):
 
         self.setAttribute(Qt.WA_DeleteOnClose)
 
-        QTimer.singleShot(1000, self.connect_to_vpn)
-
     def setup_ui(self):
         self.chat_display.setReadOnly(True)
         self.chat_display.setLineWrapMode(QtWidgets.QTextEdit.WidgetWidth)
@@ -69,8 +67,7 @@ class RoomWindow(QtWidgets.QMainWindow):
         if hasattr(self, 'btn_start'):
             self.btn_start.setEnabled(self.is_host)
         if hasattr(self, 'lbl_vpn_info'):
-            self.lbl_vpn_info.setText("VPN Status: Connecting...")
-        QTimer.singleShot(1000, self.connect_to_vpn)
+            self.lbl_vpn_info.setText("VPN Status: Waiting for room data...")
 
     def setup_connections(self):
         if hasattr(self, 'btn_send'):
@@ -96,7 +93,7 @@ class RoomWindow(QtWidgets.QMainWindow):
         socket_manager.on('connect', self.on_socket_connect, namespace="/game")
         socket_manager.on('disconnect', self.on_socket_disconnect, namespace="/game")
         socket_manager.on('error', self.on_socket_error)
-        socket_manager.on('join_success', lambda data: self.handle_join_response(data), namespace="/game")
+        socket_manager.on('join_success', lambda data: self.join_response_received.emit(data), namespace="/game")
         socket_manager.on('new_message', self.log_and_emit(self.message_received), namespace="/game")
         socket_manager.on('user_joined', self.log_and_emit(self.player_joined), namespace="/game")
         socket_manager.on('user_left', self.log_and_emit(self.player_left), namespace="/game")
@@ -105,7 +102,12 @@ class RoomWindow(QtWidgets.QMainWindow):
         socket_manager.on('room_closed', self.log_and_emit(self.room_closed_signal), namespace="/game")
         socket_manager.on('game_started', self.on_game_started, namespace="/game")
 
-        QTimer.singleShot(2000, self.emit_join_request)
+        # Use Qt's thread-safe signal mechanism instead of QTimer.singleShot for initial join
+        QtCore.QMetaObject.invokeMethod(
+            self,
+            "_delayed_join_request",
+            QtCore.Qt.QueuedConnection
+        )
 
     def emit_join_request(self):
         if socket_manager.connected:
@@ -156,28 +158,116 @@ class RoomWindow(QtWidgets.QMainWindow):
             return
 
         self.players = response.get('players', [])
-        self.room_data.update({
-            'vpn_hub': response.get('vpn_hub'),
-            'vpn_username': response.get('vpn_username'),
-            'vpn_password': response.get('vpn_password'),
-            'server_ip': response.get('server_ip'),
-            'port': response.get('port')
-        })
-
+        
+        # Socket.io join only succeeds after HTTP join, so we should already have VPN data
+        # No need to update VPN data from socket.io response since it doesn't contain VPN data
         host_tag = "👑 " if response.get('is_host', False) else ""
         self.add_chat_message(f"🟢 Connected as {host_tag}{self.user_username}<br>")
         self.update_players_signal.emit(self.players)
-        QTimer.singleShot(1000, self.connect_to_vpn)
-
-    def connect_to_vpn(self):
-        vpn_info = self.room_data.get('vpn_info', self.room_data)
-        self.vpn_status_signal.emit("VPN Status: Connecting...")
-        success = self.vpn_manager.connect(vpn_info)
-        if success:
-            self.vpn_status_signal.emit("VPN Status: Connected")
+        
+        # Try to connect to VPN using existing VPN data
+        if self.room_data.get('vpn_info') or any(self.room_data.get(key) for key in ['network_name', 'private_key', 'server_public_key', 'server_ip']):
+            # Use Qt's thread-safe signal mechanism instead of QTimer.singleShot
+            QtCore.QMetaObject.invokeMethod(
+                self, 
+                "connect_to_vpn", 
+                QtCore.Qt.QueuedConnection
+            )
         else:
-            self.vpn_status_signal.emit("VPN Status: Failed to connect")
-            self.show_warning_signal.emit("VPN Error", "Failed to connect to VPN.")
+            self.vpn_status_signal.emit("VPN Status: No VPN network available")
+            logger.info("No VPN data available - continuing without VPN")
+
+    @pyqtSlot()
+    def connect_to_vpn(self):
+        self.vpn_status_signal.emit("VPN Status: Checking existing connections...")
+        
+        # Update room_data with VPN info before connecting
+        if hasattr(self, 'room_data'):
+            # Get VPN info from the vpn_info dictionary if it exists, otherwise from root level
+            vpn_info_dict = self.room_data.get('vpn_info', {})
+            vpn_info = {
+                'network_name': vpn_info_dict.get('network_name') or self.room_data.get('network_name'),
+                'private_key': vpn_info_dict.get('private_key') or self.room_data.get('private_key'),
+                'public_key': vpn_info_dict.get('public_key') or self.room_data.get('public_key'),
+                'server_public_key': vpn_info_dict.get('server_public_key') or self.room_data.get('server_public_key'),
+                'server_ip': vpn_info_dict.get('server_ip') or self.room_data.get('server_ip'),
+                'port': vpn_info_dict.get('port') or self.room_data.get('port', 51820),
+                'allowed_ips': vpn_info_dict.get('allowed_ips') or self.room_data.get('allowed_ips')
+            }
+            self.room_data['vpn_info'] = vpn_info
+            
+            # Check if we have any VPN info at all (exclude port from the check since it has a default value)
+            required_fields = ['network_name', 'private_key', 'server_public_key', 'server_ip']
+            has_vpn_info = all(vpn_info.get(field) for field in required_fields)
+            
+            if not has_vpn_info:
+                missing_fields = [field for field in required_fields if not vpn_info.get(field)]
+                self.vpn_status_signal.emit("VPN Status: No VPN network available")
+                logger.info(f"No VPN network configured for this room - missing fields: {missing_fields}")
+                return
+            
+            # Create or recreate VPN manager with updated room data
+            if self.vpn_manager:
+                # Disconnect existing VPN if any
+                logger.info("Disconnecting existing VPN connection...")
+                self.vpn_status_signal.emit("VPN Status: Disconnecting old connection...")
+                self.vpn_manager.disconnect(cleanup=True)  # Full cleanup
+            
+            # Create new VPN manager
+            self.vpn_manager = VPNManager(self.room_data)
+            
+            # Log VPN configuration for debugging
+            logger.info(f"VPN Configuration:")
+            logger.info(f"  Network: {vpn_info.get('network_name', 'N/A')}")
+            logger.info(f"  Server IP: {vpn_info.get('server_ip', 'N/A')}")
+            logger.info(f"  Port: {vpn_info.get('port', 'N/A')}")
+            logger.info(f"  Private Key: {'Present' if vpn_info.get('private_key') else 'Missing'}")
+            logger.info(f"  Server Public Key: {'Present' if vpn_info.get('server_public_key') else 'Missing'}")
+            logger.info(f"  Allowed IPs: {vpn_info.get('allowed_ips', 'N/A')}")
+        
+        # Update status and connect
+        self.vpn_status_signal.emit("VPN Status: Connecting...")
+        
+        # Call connect without any arguments (only self)
+        success = self.vpn_manager.connect()
+        if success:
+            self.vpn_status_signal.emit("VPN Status: Connected ✅")
+            self.add_chat_message("🔐 <span style='color: green;'>VPN connected successfully!</span><br>")
+            
+            # Get tunnel info for display
+            tunnel_info = self.vpn_manager.get_tunnel_info()
+            network_name = tunnel_info.get('network_name', 'Unknown')
+            self.add_chat_message(f"🌐 Network: <span style='color: blue;'>{network_name}</span><br>")
+        else:
+            # Check if it's missing VPN info or a real connection failure
+            vpn_info = self.room_data.get('vpn_info', {})
+            required_fields = ['server_ip', 'private_key', 'server_public_key']
+            missing_fields = [field for field in required_fields if not vpn_info.get(field)]
+            
+            if missing_fields:
+                self.vpn_status_signal.emit("VPN Status: No VPN network available")
+                logger.info(f"VPN connection skipped - missing required fields: {missing_fields}")
+                self.add_chat_message("ℹ️ <span style='color: orange;'>No VPN network configured for this room</span><br>")
+            else:
+                self.vpn_status_signal.emit("VPN Status: Failed to connect ❌")
+                self.add_chat_message("⚠️ <span style='color: red;'>VPN connection failed</span><br>")
+                
+                # Show error message for actual connection failures
+                error_msg = """Failed to connect to VPN.
+
+This could be due to:
+1. WireGuard not being installed or accessible
+2. Insufficient administrator privileges  
+3. Network connectivity issues
+4. Old tunnels interfering with connection
+
+The room will work without VPN, but you won't be able to connect to game servers.
+
+To resolve:
+- Make sure you run the application as administrator
+- Check that WireGuard is properly installed
+- Try running 'python wireguard_config.py' to configure WireGuard path"""
+                self.show_warning_signal.emit("VPN Connection Failed", error_msg)
 
     def update_vpn_label(self, status_text):
         if hasattr(self, 'lbl_vpn_info'):
@@ -185,10 +275,17 @@ class RoomWindow(QtWidgets.QMainWindow):
 
     def disconnect_vpn(self):
         try:
-            self.vpn_manager.disconnect()
-            self.vpn_status_signal.emit("VPN Status: Disconnected")
+            if self.vpn_manager:
+                logger.info("Disconnecting VPN...")
+                self.vpn_status_signal.emit("VPN Status: Disconnecting...")
+                self.vpn_manager.disconnect(cleanup=True)  # Full cleanup when leaving room
+                self.vpn_status_signal.emit("VPN Status: Disconnected")
+                self.add_chat_message("🔓 <span style='color: orange;'>VPN disconnected</span><br>")
+            else:
+                logger.info("VPN manager not initialized, nothing to disconnect")
         except Exception as e:
             logger.error(f"Error disconnecting VPN: {e}")
+            self.add_chat_message("⚠️ <span style='color: red;'>Error disconnecting VPN</span><br>")
 
     def send_message(self):
         message = self.chat_input.text().strip()
@@ -229,12 +326,39 @@ class RoomWindow(QtWidgets.QMainWindow):
         self.request_players_update()
 
     def request_players_update(self):
-        QTimer.singleShot(1000, lambda: socket_manager.emit("heartbeat", {
-            "room_id": self.room_id,
-            "username": self.user_username
-        }, namespace="/game"))
+        # Use Qt's thread-safe signal mechanism instead of QTimer.singleShot
+        QtCore.QMetaObject.invokeMethod(
+            self,
+            "_send_heartbeat_delayed",
+            QtCore.Qt.QueuedConnection
+        )
+    
+    @pyqtSlot()
+    def _send_heartbeat_delayed(self):
+        """Helper method to send heartbeat from main thread"""
+        if socket_manager.connected:
+            socket_manager.emit("heartbeat", {
+                "room_id": self.room_id,
+                "username": self.user_username
+            }, namespace="/game")
 
     def render_players_list(self, players):
+        """Render players list in a thread-safe manner"""
+        # Ensure this runs in the main thread
+        if not QtCore.QThread.currentThread() == QtWidgets.QApplication.instance().thread():
+            QtCore.QMetaObject.invokeMethod(
+                self,
+                "_render_players_list_safe",
+                QtCore.Qt.QueuedConnection,
+                QtCore.Q_ARG(list, players)
+            )
+            return
+        
+        self._render_players_list_safe(players)
+    
+    @pyqtSlot(list)
+    def _render_players_list_safe(self, players):
+        """Thread-safe version of render_players_list"""
         self.players = players  # تأكد من تحديثهم
         self.list_players.clear()
         for player in players:
@@ -248,7 +372,6 @@ class RoomWindow(QtWidgets.QMainWindow):
             display_name = f"👑 {username}" if is_host else username
             item = QtWidgets.QListWidgetItem(display_name)
             self.list_players.addItem(item)
-
 
     def start_game(self):
         if self.is_host:
@@ -300,3 +423,8 @@ class RoomWindow(QtWidgets.QMainWindow):
 
     def show_warning_box(self, title, message):
         QMessageBox.warning(self, title, message)
+
+    @pyqtSlot()
+    def _delayed_join_request(self):
+        """Helper method to send initial join request from main thread after 2 second delay"""
+        QTimer.singleShot(2000, self.emit_join_request)

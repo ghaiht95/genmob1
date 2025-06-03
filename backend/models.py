@@ -1,9 +1,10 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, UniqueConstraint, LargeBinary
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database.base import Base
 import re
 from passlib.context import CryptContext
+from typing import Optional, Tuple, Union
 
 # سياق تشفير كلمات المرور
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -13,21 +14,22 @@ class User(Base):
     __tablename__ = "user"
 
     id = Column(Integer, primary_key=True)
-    username = Column(String(80), unique=True, nullable=False, index=True)
-    email = Column(String(120), unique=True, nullable=False, index=True)
-    password_hash = Column(String(128), nullable=False)
-    verification_code = Column(String(10), nullable=True)
+    username = Column(String(100), unique=True, nullable=False, index=True)
+    email = Column(String(100), unique=True, nullable=False, index=True)
+    password_hash = Column(String(100), nullable=False)
+    verification_code = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = Column(Boolean, default=True)
-    private_key = Column(String(15), nullable=True)
-    public_key = Column(String(17), nullable=True)
+    private_key = Column(LargeBinary, nullable=True)  # WireGuard keys are 44 chars
+    public_key = Column(LargeBinary, nullable=True)   # WireGuard keys are 44 chars
 
     # علاقات ORM
     messages = relationship("ChatMessage", back_populates="sender", cascade="all, delete-orphan")
     owned_rooms = relationship('Room', back_populates='owner', foreign_keys='Room.owner_username')
     rooms = relationship('RoomPlayer', back_populates='player')
     network_config_user = relationship('network_config_user', back_populates='user')
+
     def set_password(self, password: str):
         self.password_hash = pwd_context.hash(password)
 
@@ -82,6 +84,7 @@ class Room(Base):
     players = relationship("RoomPlayer", back_populates="room", cascade="all, delete-orphan")
     messages = relationship("ChatMessage", back_populates="room", cascade="all, delete-orphan")
     owner = relationship("User", back_populates="owned_rooms")
+    network_configs = relationship("network_config", back_populates="room")
 
     @staticmethod
     def validate_name(name: str) -> bool:
@@ -123,28 +126,30 @@ class ChatMessage(Base):
     @staticmethod
     def validate_message(message: str) -> bool:
         return bool(message and 0 < len(message.strip()) <= 1000)
-    
-    class network_config(Base):
-        __tablename__ = 'network_config'
-        id = Column(Integer, primary_key=True)
-        private_key = Column(String(15), nullable=True)
-        public_key = Column(String(17), nullable=True)
-        server_ip = Column(String(100), nullable=True)
-        port = Column(Integer, nullable=True)
-        is_active = Column(Boolean, default=False)
-        NETWORK_NAME = Column(String(100), nullable=True, unique=True)
 
-        # علاقات ORM
-        room = relationship('Room', back_populates='network_configs')
-        user = relationship('User', back_populates='network_configs')
-        
-    class network_config_user(Base):
-        __tablename__ = 'network_config_user'
-        id = Column(Integer, primary_key=True)
-        network_config_id = Column(Integer, ForeignKey('network_config.id', ondelete='CASCADE'), nullable=False, index=True)
-        user_id = Column(Integer, ForeignKey('user.id', ondelete='CASCADE'), nullable=False, index=True)
-        allowed_ips = Column(String(100), nullable=True)
-        
-       # علاقات ORM
-        network_config = relationship('network_config', back_populates='network_config_user')
-        user = relationship('User', back_populates='network_config_user')
+
+class network_config(Base):
+    __tablename__ = 'network_config'
+    id = Column(Integer, primary_key=True)
+    private_key = Column(LargeBinary, nullable=True)  # WireGuard keys are 44 chars
+    public_key = Column(LargeBinary, nullable=True)   # WireGuard keys are 44 chars
+    server_ip = Column(String(100), nullable=True)
+    port = Column(Integer, nullable=True)
+    is_active = Column(Boolean, default=False)
+    network_name = Column(String(100), nullable=True, unique=True)
+
+    # علاقات ORM
+    room = relationship('Room', back_populates='network_configs')
+    network_config_user = relationship('network_config_user', back_populates='network_config', cascade="all, delete-orphan")
+
+
+class network_config_user(Base):
+    __tablename__ = 'network_config_user'
+    id = Column(Integer, primary_key=True)
+    network_config_id = Column(Integer, ForeignKey('network_config.id', ondelete='CASCADE'), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey('user.id', ondelete='CASCADE'), nullable=False, index=True)
+    allowed_ips = Column(String(100), nullable=True)
+    
+    # علاقات ORM
+    network_config = relationship('network_config', back_populates='network_config_user')
+    user = relationship('User', back_populates='network_config_user')

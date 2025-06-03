@@ -12,8 +12,8 @@ class SocketManager:
 
     def disconnect(self):
         try:
-        if self.connected:
-            self.socket.disconnect()
+            if self.connected:
+                self.socket.disconnect()
                 self.connected = False
         except Exception as e:
             print(f"Error in socket disconnect: {e}")

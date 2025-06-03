@@ -1,13 +1,17 @@
+import logging
 import uvicorn
-
-# Import the combined ASGI app (FastAPI + Socket.IO) from app_setup.py
 from app_setup import socket_app
 
-# The main guard for running Uvicorn
+# تعطيل أو تقليل مستوى السجلات الخاصة بـ engineio و socketio
+logging.getLogger('engineio.server').setLevel(logging.WARNING)
+logging.getLogger('socketio.server').setLevel(logging.WARNING)
+logging.getLogger('socket_events').setLevel(logging.WARNING)
+
 if __name__ == "__main__":
     uvicorn.run(
-        socket_app, 
-        host="0.0.0.0", 
-        port=5000, 
-        reload=True
-    ) 
+        socket_app,
+        host="0.0.0.0",
+        port=5000,
+        reload=True,
+        log_level="warning"  # يعرض فقط التحذيرات والأخطاء
+    )

@@ -1,0 +1,11 @@
+# WireGuard Custom Path Configuration
+# اضع المسار الكامل لـ WireGuard executable هنا
+# ثم احفظ هذا الملف باسم wireguard_config.txt في نفس مجلد التطبيق
+
+# أمثلة للمسارات:
+# C:\Program Files\WireGuard\wireguard.exe
+# C:\Users\GHAIT\Desktop\fort\new\for\tools\WireguardPortable\App\x64\wireguard.exe
+# C:\Tools\WireGuard\wireguard.exe
+
+# اكتب المسار الصحيح هنا (حذف علامة # من بداية السطر):
+# C:\Path\To\Your\WireGuard\wireguard.exe 

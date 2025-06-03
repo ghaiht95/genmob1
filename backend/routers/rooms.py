@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from database.database import get_session
-from models import Room, RoomPlayer, ChatMessage, User
+from models import Room, RoomPlayer, ChatMessage, User, network_config, network_config_user
 from config import settings
 from services.Wiregruad import WiregruadVPN 
 import random
@@ -68,7 +68,7 @@ async def create_room(request: Request, current_user: User = Depends(get_current
     
     # Check if user is already in a room
     existing_player = await db.execute(
-        select(RoomPlayer).filter_by(player_username=current_user.email)
+        select(RoomPlayer).filter_by(player_username=current_user.username)
     )
     existing_player = existing_player.scalars().first()
     
@@ -93,7 +93,7 @@ async def create_room(request: Request, current_user: User = Depends(get_current
     
     room = Room(
         name=data["name"],
-        owner_username=current_user.email,
+        owner_username=current_user.username,
         description=data.get("description", ""),
         is_private=data.get("is_private", False),
         password=data.get("password", ""),
@@ -102,17 +102,20 @@ async def create_room(request: Request, current_user: User = Depends(get_current
     )
     db.add(room)
     await db.flush()
-    network_name = f"room_{room.id}"
-    room.network_name = network_name
 
-    logger.info(f"Creating VPN hub: {network_name}")
+    logger.info(f"Creating VPN hub for room {room.id}")
     try:
-        if not await vpn.create_network_config(db):
-            logger.error(f"Failed to create VPN hub: {network_name}")
+        # Create network config and get the actual network name
+        network_name = await vpn.create_network_config(db)
+        if not network_name:
+            logger.error(f"Failed to create VPN hub for room {room.id}")
             await db.rollback()
             raise HTTPException(status_code=500, detail="Failed to create VPN hub")
         
-        rp = RoomPlayer(room_id=room.id, player_username=current_user.email, username=username, is_host=True)
+        # Set the network name returned by VPN
+        room.network_name = network_name
+        
+        rp = RoomPlayer(room_id=room.id, player_username=current_user.username, username=current_user.username, is_host=True)
         db.add(rp)
         await db.commit()
         await sio.emit('update_rooms', {}, namespace=NAMESPACE)
@@ -126,7 +129,8 @@ async def create_room(request: Request, current_user: User = Depends(get_current
         try:
             await db.delete(rp)
             await db.delete(room)
-            await vpn.delete_network_config(db, network_name)
+            if 'network_name' in locals():
+                await vpn.delete_network_config(db, network_name)
         except:
             pass
         await db.rollback()
@@ -151,13 +155,56 @@ async def join_room(request: Request, current_user: User = Depends(get_current_u
 
     # ✅ التحقق من وجود اللاعب في الغرفة
     existing_player = await db.execute(
-        select(RoomPlayer).filter_by(room_id=room.id, player_username=current_user.email)
+        select(RoomPlayer).filter_by(room_id=room.id, player_username=current_user.username)
     )
     existing_player = existing_player.scalars().first()
 
     if existing_player:
+        # Get network config details for VPN connection even for existing players
+        network_result = await db.execute(
+            select(network_config).filter_by(network_name=room.network_name)
+        )
+        network_cfg = network_result.scalars().first()
+        
+        # Get user's allowed IPs from network_config_user table
+        allowed_ips_result = await db.execute(
+            select(network_config_user).filter_by(
+                network_config_id=network_cfg.id,
+                user_id=current_user.id
+            )
+        )
+        user_network_config = allowed_ips_result.scalars().first()
+        
+        # If user doesn't have VPN config yet (e.g., room creator), add them to VPN
+        if not user_network_config:
+            if not await vpn.push_user_to_network_config(db, room.network_name, username=current_user.username):
+                logger.error(f"Failed to create VPN user: {current_user.username} in hub: {room.network_name}")
+                raise HTTPException(status_code=500, detail="Failed to create VPN user")
+            
+            # Re-fetch the user's network config after creation
+            allowed_ips_result = await db.execute(
+                select(network_config_user).filter_by(
+                    network_config_id=network_cfg.id,
+                    user_id=current_user.id
+                )
+            )
+            user_network_config = allowed_ips_result.scalars().first()
+        
+        # Convert user keys to string if they are bytes
+        user_private_key = current_user.private_key.decode() if isinstance(current_user.private_key, bytes) else current_user.private_key
+        user_public_key = current_user.public_key.decode() if isinstance(current_user.public_key, bytes) else current_user.public_key
+        
+        # Convert server public key to string if it's bytes
+        server_public_key = network_cfg.public_key.decode() if isinstance(network_cfg.public_key, bytes) else network_cfg.public_key if network_cfg else None
+        
         return {
             "room_id": room.id,
+            "private_key": user_private_key,
+            "public_key": user_public_key,  
+            "server_public_key": server_public_key,
+            "server_ip": network_cfg.server_ip if network_cfg else None,
+            "port": network_cfg.port if network_cfg else None,
+            "allowed_ips": user_network_config.allowed_ips if user_network_config else None,
             "network_name": room.network_name,
             "message": "You are already in this room. Using existing connection."
         }
@@ -171,31 +218,57 @@ async def join_room(request: Request, current_user: User = Depends(get_current_u
         raise HTTPException(status_code=400, detail="Room is full")
 
     # ✅ إنشاء مستخدم جديد في VPN
-    if not await vpn.push_user_to_network_config(db, room.network_name, username=current_user.email):
-        logger.error(f"Failed to create VPN user: {current_user.email} in hub: {room.network_name}")
+    if not await vpn.push_user_to_network_config(db, room.network_name, username=current_user.username):
+        logger.error(f"Failed to create VPN user: {current_user.username} in hub: {room.network_name}")
         raise HTTPException(status_code=500, detail="Failed to create VPN user")
 
     # ✅ إضافة اللاعب للغرفة
     rp = RoomPlayer(
         room_id=room.id,
-        player_username=current_user.email,
-        username=current_user.email,
+        player_username=current_user.username,
+        username=current_user.username,
         is_host=(room.current_players == 0)
     )
     db.add(rp)
     room.current_players += 1
     if room.current_players == 1:
-        room.owner_username = current_user.email
+        room.owner_username = current_user.username
 
     await db.commit()
     await db.refresh(room)
+    
+    # Get network config details for VPN connection
+    network_result = await db.execute(
+        select(network_config).filter_by(network_name=room.network_name)
+    )
+    network_cfg = network_result.scalars().first()
+    
+    # Get user's allowed IPs from network_config_user table
+    allowed_ips_result = await db.execute(
+        select(network_config_user).filter_by(
+            network_config_id=network_cfg.id,
+            user_id=current_user.id
+        )
+    )
+    user_network_config = allowed_ips_result.scalars().first()
+    
+    # Convert user keys to string if they are bytes
+    user_private_key = current_user.private_key.decode() if isinstance(current_user.private_key, bytes) else current_user.private_key
+    user_public_key = current_user.public_key.decode() if isinstance(current_user.public_key, bytes) else current_user.public_key
+    
+    # Convert server public key to string if it's bytes
+    server_public_key = network_cfg.public_key.decode() if isinstance(network_cfg.public_key, bytes) else network_cfg.public_key if network_cfg else None
+    
     await sio.emit('update_rooms', {}, namespace=NAMESPACE)
     return {
         "room_id": room.id,
-        "private_key": current_user.private_key,
-        "public_key": current_user.public_key,  
-        "server_ip": room.network_name.server_ip,
-        "port": room.network_name.port,
+        "private_key": user_private_key,
+        "public_key": user_public_key,  
+        "server_public_key": server_public_key,
+        "server_ip": network_cfg.server_ip if network_cfg else None,
+        "port": network_cfg.port if network_cfg else None,
+        "allowed_ips": user_network_config.allowed_ips if user_network_config else None,
+        "network_name": room.network_name,
         "message": "Joined room successfully"
     }
 
@@ -210,7 +283,7 @@ async def leave_room(request: Request, current_user: User = Depends(get_current_
     except (ValueError, TypeError):
         raise HTTPException(status_code=400, detail="Invalid room ID format")
     
-    rp = await db.execute(select(RoomPlayer).filter_by(room_id=room_id, player_username=current_user.email))
+    rp = await db.execute(select(RoomPlayer).filter_by(room_id=room_id, player_username=current_user.username))
     rp = rp.scalars().first()
     room = await db.get(Room, room_id)
     if not room:
@@ -219,7 +292,7 @@ async def leave_room(request: Request, current_user: User = Depends(get_current_
 
     if rp:
         try:
-            await vpn.check_user_in_network_config(db, room.network_name, username=current_user.email)
+            await vpn.check_user_in_network_config(db, room.network_name, username=current_user.username)
         except Exception as e:
             logger.warning(f"Error deleting VPN user: {e}")
         await db.delete(rp)

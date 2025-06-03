@@ -1,10 +1,97 @@
-2025-05-26 11:41:53,949 - socket_events - INFO - Join event - SID: S6HEtJoHaFBObXS3AAAB, Data: {'room_id': '32', 'username': 'ghaith12'}
-2025-05-26 11:41:53,949 - socket_events - DEBUG - Join request received - Data: {'sid': 'S6HEtJoHaFBObXS3AAAB', 'data': {'room_id': '32', 'username': 'ghaith12'}}
-2025-05-26 11:41:53,950 - socket_events - DEBUG - Checking player existence - Data: {'sid': 'S6HEtJoHaFBObXS3AAAB', 'room_id': 32, 'username': 'ghaith12'}
-2025-05-26 11:41:53,954 - socket_events - DEBUG - Player found, proceeding with join - Data: {'sid': 'S6HEtJoHaFBObXS3AAAB', 'room_id': 32, 'username': 'ghaith12'}
-2025-05-26 11:41:53,958 - socket_events - DEBUG - Join successful - Data: {'sid': 'S6HEtJoHaFBObXS3AAAB', 'room_id': 32, 'username': 'ghaith12', 'is_host': True}
-2025-05-26 11:41:54,987 - socket_events - DEBUG - Heartbeat - SID: S6HEtJoHaFBObXS3AAAB, Data: {'room_id': '32', 'username': 'ghaith12'}
-2025-05-26 11:42:12,391 - socket_events - INFO - Leave event - SID: S6HEtJoHaFBObXS3AAAB, Data: {'room_id': '32', 'username': 'ghaith12'}
-2025-05-26 11:42:12,843 - socket_events - INFO - Leave event - SID: S6HEtJoHaFBObXS3AAAB, Data: {'room_id': '32', 'username': 'ghaith12'}
-2025-05-26 11:42:46,695 - socket_events - INFO - Disconnection - SID: S6HEtJoHaFBObXS3AAAB
-2025-05-26 11:42:46,695 - socket_events - DEBUG - Client rooms state: {}
+2025-06-02 22:44:36,943 - socket_events - INFO - New connection - SID: I0XFicMWyrjAaMJaAAAB
+2025-06-02 22:44:36,943 - socket_events - DEBUG - Connection environment: {'wsgi.input': <engineio.async_drivers.asgi.translate_request.<locals>.AwaitablePayload object at 0x7fb427cf8bd0>, 'wsgi.errors': <_io.TextIOWrapper name='<stderr>' mode='w' encoding='utf-8'>, 'wsgi.version': (1, 0), 'wsgi.async': True, 'wsgi.multithread': False, 'wsgi.multiprocess': False, 'wsgi.run_once': False, 'SERVER_SOFTWARE': 'asgi', 'REQUEST_METHOD': 'GET', 'PATH_INFO': '/socket.io/', 'QUERY_STRING': 'transport=polling&EIO=4&t=1748897077.4491932', 'RAW_URI': '/socket.io/?transport=polling&EIO=4&t=1748897077.4491932', 'SCRIPT_NAME': '', 'SERVER_PROTOCOL': 'HTTP/1.1', 'REMOTE_ADDR': '127.0.0.1', 'REMOTE_PORT': '0', 'SERVER_NAME': 'asgi', 'SERVER_PORT': '0', 'asgi.receive': <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.h11_impl.RequestResponseCycle object at 0x7fb427ceb650>>, 'asgi.send': <bound method RequestResponseCycle.send of <uvicorn.protocols.http.h11_impl.RequestResponseCycle object at 0x7fb427ceb650>>, 'asgi.scope': {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.3'}, 'http_version': '1.1', 'server': ('31.220.80.192', 5000), 'client': ('84.190.120.86', 15885), 'scheme': 'http', 'method': 'GET', 'root_path': '', 'path': '/socket.io/', 'raw_path': b'/socket.io/', 'query_string': b'transport=polling&EIO=4&t=1748897077.4491932', 'headers': [(b'host', b'31.220.80.192:5000'), (b'user-agent', b'python-requests/2.32.3'), (b'accept-encoding', b'gzip, deflate'), (b'accept', b'*/*'), (b'connection', b'keep-alive')], 'state': {}}, 'HTTP_HOST': '31.220.80.192:5000', 'HTTP_USER_AGENT': 'python-requests/2.32.3', 'HTTP_ACCEPT_ENCODING': 'gzip, deflate', 'HTTP_ACCEPT': '*/*', 'HTTP_CONNECTION': 'keep-alive', 'wsgi.url_scheme': 'http'}
+2025-06-02 22:44:36,943 - socket_events - DEBUG - Sending server_ready event - Data: {'sid': 'I0XFicMWyrjAaMJaAAAB'}
+2025-06-02 22:44:36,944 - socket_events - DEBUG - Current client_rooms state
+2025-06-02 22:44:36,944 - socket_events - DEBUG - Current last_heartbeat state
+2025-06-02 22:44:36,945 - socket_events - DEBUG - server_ready event sent - Data: {'sid': 'I0XFicMWyrjAaMJaAAAB'}
+2025-06-02 22:44:36,945 - socket_events - DEBUG - Heartbeat initialized - Data: {'sid': 'I0XFicMWyrjAaMJaAAAB'}
+2025-06-02 22:44:37,446 - socket_events - DEBUG - Connection setup completed - Data: {'sid': 'I0XFicMWyrjAaMJaAAAB'}
+2025-06-02 22:46:37,907 - socket_events - INFO - Disconnection - SID: I0XFicMWyrjAaMJaAAAB
+2025-06-02 22:46:37,912 - socket_events - DEBUG - Client rooms state: {}
+2025-06-03 02:27:58,350 - socket_events - DEBUG - Heartbeat - SID: test_sid_heartbeat, Data: {'room_id': 123, 'username': 'test_user'}
+2025-06-03 02:27:58,359 - socket_events - INFO - Join event - SID: test_sid_join, Data: {'username': 'test_user'}
+2025-06-03 02:27:58,360 - socket_events - DEBUG - Join request received - Data: {'sid': 'test_sid_join', 'data': {'username': 'test_user'}}
+2025-06-03 02:27:58,360 - socket_events - DEBUG - Join failed - missing data - Data: {'sid': 'test_sid_join', 'room_id': None, 'username': 'test_user'}
+2025-06-03 02:27:58,371 - socket_events - INFO - New message - SID: test_sid_message, Data: {'room_id': 1}
+2025-06-03 02:27:58,381 - socket_events - INFO - Game start - SID: test_sid_start_game, Data: {'room_id': 123}
+2025-06-03 02:27:58,396 - socket_events - INFO - Disconnection - SID: test_sid
+2025-06-03 02:27:58,397 - socket_events - DEBUG - Client rooms state: {'test_sid': {'username': 'user1', 'room_id': 123}}
+2025-06-03 02:27:58,400 - socket_events - DEBUG - Calling handle_player_leave - Data: {'username': 'user1', 'room_id': 123}
+2025-06-03 02:27:58,403 - socket_events - DEBUG - Finished handle_player_leave - Data: {'username': 'user1', 'room_id': 123}
+2025-06-03 02:27:58,423 - socket_events - INFO - Player check - SID: test_sid_check, Data: {'room_id': 123, 'username': 'test_user'}
+2025-06-03 02:27:58,428 - socket_events - ERROR - Error in check_player - SID: test_sid_check, Error: 'coroutine' object has no attribute 'first'
+2025-06-03 02:27:58,451 - socket_events - INFO - New message - SID: test_sid_invalid, Data: {'room_id': 'invalid_id', 'username': 'test_user', 'message': 'test message'}
+2025-06-03 02:27:58,452 - socket_events - ERROR - Error in send_message - SID: test_sid_invalid, Error: Invalid room_id format: invalid_id
+2025-06-03 02:27:58,462 - socket_events - INFO - New connection - SID: sid1
+2025-06-03 02:27:58,462 - socket_events - DEBUG - Connection environment: {}
+2025-06-03 02:27:58,463 - socket_events - DEBUG - Sending server_ready event - Data: {'sid': 'sid1'}
+2025-06-03 02:27:58,463 - socket_events - DEBUG - Current client_rooms state
+2025-06-03 02:27:58,463 - socket_events - DEBUG - Current last_heartbeat state
+2025-06-03 02:27:58,467 - socket_events - DEBUG - server_ready event sent - Data: {'sid': 'sid1'}
+2025-06-03 02:27:58,469 - socket_events - DEBUG - Heartbeat initialized - Data: {'sid': 'sid1'}
+2025-06-03 02:27:58,972 - socket_events - DEBUG - Connection setup completed - Data: {'sid': 'sid1'}
+2025-06-03 02:27:58,973 - socket_events - INFO - Game start - SID: sid2, Data: {'room_id': 123}
+2025-06-03 02:28:14,193 - socket_events - INFO - Join event - SID: test_sid_join, Data: {'username': 'test_user'}
+2025-06-03 02:28:14,193 - socket_events - DEBUG - Join request received - Data: {'sid': 'test_sid_join', 'data': {'username': 'test_user'}}
+2025-06-03 02:28:14,194 - socket_events - DEBUG - Join failed - missing data - Data: {'sid': 'test_sid_join', 'room_id': None, 'username': 'test_user'}
+2025-06-03 02:28:14,204 - socket_events - INFO - New message - SID: test_sid_message, Data: {'room_id': 1}
+2025-06-03 02:28:14,215 - socket_events - INFO - Game start - SID: test_sid_start_game, Data: {'room_id': 123}
+2025-06-03 02:28:14,228 - socket_events - INFO - Disconnection - SID: test_sid
+2025-06-03 02:28:14,229 - socket_events - DEBUG - Client rooms state: {'test_sid': {'username': 'user1', 'room_id': 123}}
+2025-06-03 02:28:14,232 - socket_events - DEBUG - Calling handle_player_leave - Data: {'username': 'user1', 'room_id': 123}
+2025-06-03 02:28:14,233 - socket_events - DEBUG - Finished handle_player_leave - Data: {'username': 'user1', 'room_id': 123}
+2025-06-03 02:28:14,242 - socket_events - INFO - New message - SID: test_sid_invalid, Data: {'room_id': 'invalid_id', 'username': 'test_user', 'message': 'test message'}
+2025-06-03 02:28:14,244 - socket_events - ERROR - Error in send_message - SID: test_sid_invalid, Error: Invalid room_id format: invalid_id
+2025-06-03 02:28:14,252 - socket_events - INFO - New connection - SID: sid1
+2025-06-03 02:28:14,253 - socket_events - DEBUG - Connection environment: {}
+2025-06-03 02:28:14,253 - socket_events - DEBUG - Sending server_ready event - Data: {'sid': 'sid1'}
+2025-06-03 02:28:14,253 - socket_events - DEBUG - Current client_rooms state
+2025-06-03 02:28:14,253 - socket_events - DEBUG - Current last_heartbeat state
+2025-06-03 02:28:14,256 - socket_events - DEBUG - server_ready event sent - Data: {'sid': 'sid1'}
+2025-06-03 02:28:14,257 - socket_events - DEBUG - Heartbeat initialized - Data: {'sid': 'sid1'}
+2025-06-03 02:28:14,758 - socket_events - DEBUG - Connection setup completed - Data: {'sid': 'sid1'}
+2025-06-03 02:28:14,758 - socket_events - INFO - Game start - SID: sid2, Data: {'room_id': 123}
+2025-06-03 02:28:27,129 - socket_events - INFO - New message - SID: test_sid_message, Data: {'room_id': 1}
+2025-06-03 02:28:27,147 - socket_events - INFO - Game start - SID: test_sid_start_game, Data: {'room_id': 123}
+2025-06-03 02:28:27,164 - socket_events - INFO - Disconnection - SID: test_sid
+2025-06-03 02:28:27,164 - socket_events - DEBUG - Client rooms state: {'test_sid': {'username': 'user1', 'room_id': 123}}
+2025-06-03 02:28:27,169 - socket_events - DEBUG - Calling handle_player_leave - Data: {'username': 'user1', 'room_id': 123}
+2025-06-03 02:28:27,171 - socket_events - DEBUG - Finished handle_player_leave - Data: {'username': 'user1', 'room_id': 123}
+2025-06-03 02:28:27,181 - socket_events - INFO - New message - SID: test_sid_invalid, Data: {'room_id': 'invalid_id', 'username': 'test_user', 'message': 'test message'}
+2025-06-03 02:28:27,181 - socket_events - ERROR - Error in send_message - SID: test_sid_invalid, Error: Invalid room_id format: invalid_id
+2025-06-03 02:28:27,189 - socket_events - INFO - New connection - SID: sid1
+2025-06-03 02:28:27,190 - socket_events - DEBUG - Connection environment: {}
+2025-06-03 02:28:27,190 - socket_events - DEBUG - Sending server_ready event - Data: {'sid': 'sid1'}
+2025-06-03 02:28:27,190 - socket_events - DEBUG - Current client_rooms state
+2025-06-03 02:28:27,190 - socket_events - DEBUG - Current last_heartbeat state
+2025-06-03 02:28:27,193 - socket_events - DEBUG - server_ready event sent - Data: {'sid': 'sid1'}
+2025-06-03 02:28:27,194 - socket_events - DEBUG - Heartbeat initialized - Data: {'sid': 'sid1'}
+2025-06-03 02:28:27,696 - socket_events - DEBUG - Connection setup completed - Data: {'sid': 'sid1'}
+2025-06-03 02:28:27,696 - socket_events - INFO - Game start - SID: sid2, Data: {'room_id': 123}
+2025-06-03 02:50:45,985 - socket_events - ERROR - Error in disconnect - SID: axO9ZxPtuh1e2zuHAAAH, Error: 'Room' object has no attribute 'vpn_hub'
+2025-06-03 02:56:51,160 - socket_events - ERROR - Error in disconnect - SID: eLRj7QAcEJNZ6IG0AAAL, Error: 'Room' object has no attribute 'vpn_hub'
+2025-06-03 03:03:13,215 - socket_events - ERROR - Error in disconnect - SID: MKuwcLwqRo-BelaQAAAP, Error: 'Room' object has no attribute 'vpn_hub'
+2025-06-03 03:21:41,785 - socket_events - ERROR - Error in disconnect - SID: 0ChZaeoI2yulL1ztAAAX, Error: 'Room' object has no attribute 'vpn_hub'
+2025-06-03 03:30:10,063 - socket_events - ERROR - Error in disconnect - SID: IgVEEoaIpZ6Hc_kmAAAf, Error: 'Room' object has no attribute 'vpn_hub'
+2025-06-03 04:47:56,974 - socket_events - ERROR - Error in disconnect - SID: 567p4Z2TE3a-gCtqAAAD, Error: 'Room' object has no attribute 'vpn_hub'
+2025-06-03 04:49:51,653 - socket_events - ERROR - Error in disconnect - SID: Wmvz4-WAuPcj10qzAAAB, Error: 'Room' object has no attribute 'vpn_hub'
+2025-06-03 04:50:17,445 - socket_events - ERROR - Error in leave - SID: 5W_kgM5cJY6gjNvYAAAB, Error: cannot access local variable 'room' where it is not associated with a value
+2025-06-03 04:50:17,562 - socket_events - ERROR - Error in leave - SID: 5W_kgM5cJY6gjNvYAAAB, Error: cannot access local variable 'room' where it is not associated with a value
+2025-06-03 04:51:13,233 - socket_events - ERROR - Error in disconnect - SID: 5W_kgM5cJY6gjNvYAAAB, Error: 'Room' object has no attribute 'vpn_hub'
+2025-06-03 04:58:12,336 - socket_events - ERROR - Error in leave - SID: rx8VvaLAgJl06lxpAAAB, Error: cannot access local variable 'room' where it is not associated with a value
+2025-06-03 05:00:01,462 - socket_events - ERROR - Error in leave - SID: AX8AexGCK9L6tpjUAAAD, Error: cannot access local variable 'room' where it is not associated with a value
+2025-06-03 05:00:01,759 - socket_events - ERROR - Error in leave - SID: AX8AexGCK9L6tpjUAAAD, Error: cannot access local variable 'room' where it is not associated with a value
+2025-06-03 05:00:22,144 - socket_events - ERROR - Error in leave - SID: DdXFyFDodPAhunykAAAF, Error: cannot access local variable 'room' where it is not associated with a value
+2025-06-03 05:00:22,157 - socket_events - ERROR - Error in leave - SID: DdXFyFDodPAhunykAAAF, Error: cannot access local variable 'room' where it is not associated with a value
+2025-06-03 05:14:44,597 - socket_events - ERROR - Error in leave - SID: HYdD3k4Go15CYUvVAAAD, Error: cannot access local variable 'room' where it is not associated with a value
+2025-06-03 05:14:44,713 - socket_events - ERROR - Error in leave - SID: HYdD3k4Go15CYUvVAAAD, Error: cannot access local variable 'room' where it is not associated with a value
+2025-06-03 05:16:59,027 - socket_events - ERROR - Error in leave - SID: 7LXRfgg7RQSdZAa1AAAF, Error: cannot access local variable 'room' where it is not associated with a value
+2025-06-03 05:16:59,029 - socket_events - ERROR - Error in leave - SID: 7LXRfgg7RQSdZAa1AAAF, Error: cannot access local variable 'room' where it is not associated with a value
+2025-06-03 05:19:31,221 - socket_events - ERROR - Error in leave - SID: JRa9w-gGwAfcVCQ8AAAH, Error: cannot access local variable 'room' where it is not associated with a value
+2025-06-03 05:19:31,306 - socket_events - ERROR - Error in leave - SID: JRa9w-gGwAfcVCQ8AAAH, Error: cannot access local variable 'room' where it is not associated with a value
+2025-06-03 05:39:11,441 - socket_events - ERROR - Error in leave - SID: h9ED5bdz83kPiOL3AAAB, Error: cannot access local variable 'room' where it is not associated with a value
+2025-06-03 05:39:11,504 - socket_events - ERROR - Error in leave - SID: h9ED5bdz83kPiOL3AAAB, Error: cannot access local variable 'room' where it is not associated with a value
+2025-06-03 05:39:18,362 - socket_events - ERROR - Error in leave - SID: h9ED5bdz83kPiOL3AAAB, Error: cannot access local variable 'room' where it is not associated with a value
+2025-06-03 05:39:18,421 - socket_events - ERROR - Error in leave - SID: h9ED5bdz83kPiOL3AAAB, Error: cannot access local variable 'room' where it is not associated with a value
+2025-06-03 05:41:32,631 - socket_events - ERROR - Error in leave - SID: 3xXH6idRPw0AfQrdAAAD, Error: cannot access local variable 'room' where it is not associated with a value
+2025-06-03 05:41:32,683 - socket_events - ERROR - Error in leave - SID: 3xXH6idRPw0AfQrdAAAD, Error: cannot access local variable 'room' where it is not associated with a value

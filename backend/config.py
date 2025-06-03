@@ -12,8 +12,8 @@ class Settings(BaseSettings):
     # API Settings
     API_BASE_URL: str = "http://localhost:5000"
     FLASK_DEBUG: bool = True
-    SECRET_KEY: str
-    ALGORITHM: str
+    SECRET_KEY: str = "yhbM8^I!76IL2Cx@3vxXG9qSk1r8T"  # Default value, can be overridden by env var
+    ALGORITHM: str = "HS256"  # Default value, can be overridden by env var
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     # Database Settings
     POSTGRES_USER: str = "ghaith"
@@ -44,11 +44,6 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     
     CORS_ORIGINS: list = ["http://localhost:5000"]
-    
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
-    
-    SECRET_KEY: str = "yhbM8^I!76IL2Cx@3vxXG9qSk1r8T"
-    ALGORITHM: str = "HS256"
     
     @property
     def DATABASE_URL(self):

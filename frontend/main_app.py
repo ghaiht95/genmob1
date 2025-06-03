@@ -4,6 +4,7 @@ import sys
 import ctypes
 import requests
 import subprocess
+import logging
 from PyQt5 import QtWidgets, uic, QtCore
 from PyQt5.QtWidgets import QMessageBox, QDialog, QInputDialog, QListWidgetItem, QMenu
 from PyQt5.QtGui import QTextCursor
@@ -18,7 +19,8 @@ from api_client import api_client
 import time
 from socket_client import socket_manager
 
-
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -62,6 +64,9 @@ class RoomLoader(QThread):
             self.error_occurred.emit(str(e))
 
 class MainApp(QtWidgets.QMainWindow):
+    # Add custom signal for thread-safe room window creation
+    room_creation_requested = pyqtSignal(dict)
+    
     def __init__(self, user_data):
         super().__init__()
         import os
@@ -75,6 +80,9 @@ class MainApp(QtWidgets.QMainWindow):
         # إضافة متغير للتحكم في محاولات الانضمام
         self._last_join_attempt = 0
         self._join_cooldown = 2000  # 2 seconds cooldown
+        
+        # Connect the thread-safe room creation signal
+        self.room_creation_requested.connect(self._create_room_window)
         
         # ترجمة واجهة المستخدم
         self.translate_ui()
@@ -109,13 +117,13 @@ class MainApp(QtWidgets.QMainWindow):
                 border-radius: 5px; 
                 padding: 10px; 
                 margin: 5px;
-                background-color: #f9f9f9;
+                background-color:rgb(208, 107, 255);
             }
             QListWidget::item:selected { 
-                background-color: #daeaf7; 
+                background-color:rgb(110, 149, 180); 
             }
             QListWidget::item:hover { 
-                background-color: #eaf5ff; 
+                background-color:rgb(105, 182, 255); 
             }
         """)
         
@@ -219,11 +227,27 @@ class MainApp(QtWidgets.QMainWindow):
 
         try:
             api_client.set_token(self.access_token)
-            data = api_client.post("/rooms/create_room", json=payload)
-            # تجهيز معلومات الغرفة
+            # Step 1: Create the room
+            create_data = api_client.post("/rooms/create_room", json=payload)
+            print("DEBUG: create_data =", create_data)
+            room_id = create_data.get("room_id") or create_data.get("id")
+            
+            if not room_id:
+                raise Exception("Failed to get room ID from create_room response")
+            
+            # Step 2: Join the room to get VPN data
+            join_data = api_client.post("/rooms/join_room", json={"room_id": room_id})
+            print("DEBUG: join_data =", join_data)
+            
+            # Check for join errors
+            if "detail" in join_data:
+                error_msg = join_data["detail"]
+                raise Exception(f"Failed to join created room: {error_msg}")
+            
+            # Step 3: Prepare room info with VPN data from join response
             room_info = {
-                "id": data.get("id", ""),
-                "room_id": data.get("room_id", ""),
+                "id": room_id,
+                "room_id": room_id,
                 "name": s["name"],
                 "description": s["description"],
                 "is_private": s["is_private"],
@@ -231,17 +255,22 @@ class MainApp(QtWidgets.QMainWindow):
                 "current_players": 1,
                 "owner_username": self.user_data["username"],
                 "vpn_info": {
-                    "hub": data.get("vpn_hub", ""),
-                    "username": data.get("vpn_username", ""),
-                    "password": data.get("vpn_password", ""),
-                    "server_ip": data.get("server_ip", ""),
-                    "port": data.get("port", 443)
-                }
+                    "network_name": join_data.get("network_name", ""),
+                    "private_key": join_data.get("private_key", ""),
+                    "public_key": join_data.get("public_key", ""),
+                    "server_public_key": join_data.get("server_public_key", ""),
+                    "server_ip": join_data.get("server_ip", ""),
+                    "port": join_data.get("port", 51820),
+                    "allowed_ips": join_data.get("allowed_ips", "")
+                },
+                "_already_joined": True  # Mark as already joined since we called join_room
             }
+            print("DEBUG: room_info =", room_info)
             self.open_room(room_info)
         except Exception as e:
             log_error(f"[RequestException] {e}")
             return self.show_message(f"خطأ في الإنشاء: {e}")
+
     def join_room_direct(self, room):
         # التحقق من وقت آخر محاولة انضمام
         current_time = int(time.time() * 1000)
@@ -261,6 +290,7 @@ class MainApp(QtWidgets.QMainWindow):
         try:
             api_client.set_token(self.access_token)
             data = api_client.post("/rooms/join_room", json={"room_id": room['id'], "password": password})
+            print("DEBUG: join_room_direct data =", data)
 
             # التعامل مع الأخطاء بناءً على محتوى dict
             if "detail" in data:
@@ -280,11 +310,13 @@ class MainApp(QtWidgets.QMainWindow):
                     "current_players": room.get('current_players', 0),
                     "owner_username": room.get('owner_username', ''),
                     "vpn_info": {
-                        "hub": data.get("vpn_hub", room.get("vpn_hub", "default")),
-                        "username": data.get("vpn_username", room.get("vpn_username", "")),
-                        "password": data.get("vpn_password", room.get("vpn_password", "")),
-                        "server_ip": data.get("server_ip", room.get("server_ip", "")),
-                        "port": data.get("port", room.get("port", 443))
+                        "network_name": data.get("network_name", ""),
+                        "private_key": data.get("private_key", ""),
+                        "public_key": data.get("public_key", ""),
+                        "server_public_key": data.get("server_public_key", ""),
+                        "server_ip": data.get("server_ip", ""),
+                        "port": data.get("port", 51820),
+                        "allowed_ips": data.get("allowed_ips", "")
                     },
                     "_already_joined": True  # Mark as already joined
                 }
@@ -293,11 +325,13 @@ class MainApp(QtWidgets.QMainWindow):
             
             # تحديث بيانات الغرفة
             vpn_info = {
-                "hub": data.get("vpn_hub", room.get("vpn_hub", "default")),
-                "username": data.get("vpn_username", room.get("vpn_username", "")),
-                "password": data.get("vpn_password", room.get("vpn_password", "")),
-                "server_ip": data.get("server_ip", room.get("server_ip", "")),
-                "port": data.get("port", room.get("port", 443))
+                "network_name": data.get("network_name", ""),
+                "private_key": data.get("private_key", ""),
+                "public_key": data.get("public_key", ""),
+                "server_public_key": data.get("server_public_key", ""),
+                "server_ip": data.get("server_ip", ""),
+                "port": data.get("port", 51820),
+                "allowed_ips": data.get("allowed_ips", "")
             }
             
             room_info = {
@@ -319,6 +353,12 @@ class MainApp(QtWidgets.QMainWindow):
             return self.show_message(f"خطأ في الانضمام: {e}", "خطأ")
 
     def open_room(self, room_info):
+        # Use thread-safe signal to ensure room window creation happens in main thread
+        self.room_creation_requested.emit(room_info)
+    
+    @QtCore.pyqtSlot(dict)
+    def _create_room_window(self, room_info):
+        """Thread-safe room window creation"""
         if self.room_win:
             self.room_win.close()
 
@@ -400,7 +440,7 @@ class MainApp(QtWidgets.QMainWindow):
 
     def closeEvent(self, event):
         try:
-        socket_manager.disconnect()
+            socket_manager.disconnect()
         except Exception as e:
             print(f"Error in closeEvent: {e}")
         event.accept()
